@@ -695,20 +695,26 @@ func (ct *ConnectivityTest) maybeNodeToNodeEncryptionAffinity() *corev1.NodeAffi
 	}
 }
 
+func (ct *ConnectivityTest) forceDeploy(ctx context.Context) error {
+	for _, client := range ct.Clients() {
+
+		if err := ct.deleteDeployments(ctx, client); err != nil {
+			return err
+		}
+		if err := ct.DeleteConnDisruptTestDeployment(ctx, client); err != nil {
+			return err
+		}
+		if err := ct.DeleteCCNPTestEnv(ctx, client); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // deployNamespace sets up the test namespace.
 func (ct *ConnectivityTest) deployNamespace(ctx context.Context) error {
 	for _, client := range ct.Clients() {
-		if ct.params.ForceDeploy {
-			if err := ct.deleteDeployments(ctx, client); err != nil {
-				return err
-			}
-			if err := ct.DeleteConnDisruptTestDeployment(ctx, client); err != nil {
-				return err
-			}
-			if err := ct.DeleteCCNPTestEnv(ctx, client); err != nil {
-				return err
-			}
-		}
 
 		namespace, err := client.GetNamespace(ctx, ct.params.TestNamespace, metav1.GetOptions{})
 		if err != nil {
@@ -1012,6 +1018,10 @@ func (ct *ConnectivityTest) deployCCNPTestEnv(ctx context.Context) error {
 
 // deploy ensures the test Namespace, Services and Deployments are running on the cluster.
 func (ct *ConnectivityTest) deploy(ctx context.Context) error {
+	if ct.params.ForceDeploy {
+		ct.forceDeploy(ctx)
+	}
+
 	if err := ct.deployNamespace(ctx); err != nil {
 		return err
 	}
@@ -2291,6 +2301,10 @@ func (ct *ConnectivityTest) createProfilingPerfDeployment(ctx context.Context, n
 }
 
 func (ct *ConnectivityTest) deployPerf(ctx context.Context) error {
+	if ct.params.ForceDeploy {
+		ct.forceDeploy(ctx)
+	}
+
 	if err := ct.deployNamespace(ctx); err != nil {
 		return err
 	}
